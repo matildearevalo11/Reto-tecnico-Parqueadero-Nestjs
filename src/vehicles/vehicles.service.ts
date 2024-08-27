@@ -23,4 +23,5 @@ export class VehiclesService {
   remove(id: number) {
     return `This action removes a #${id} vehicle`;
   }
+
 }

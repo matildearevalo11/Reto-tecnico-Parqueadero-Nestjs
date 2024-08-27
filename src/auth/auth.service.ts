@@ -5,6 +5,7 @@ import { LoginAuthDto } from "./dto/login-auth.dto";
 import { RegisterAuthDto } from "./dto/register-auth.dto";
 import { hash, compare } from "bcrypt";
 import { TokenService } from "src/token/token.service";
+import { BadRequestException } from "src/exceptions/bad-request.exception";
 
 @Injectable()
 export class AuthService {
@@ -19,7 +20,7 @@ export class AuthService {
     const user = await this.usersService.findByEmail(loginUser.email);
     const checkPassword = await compare(loginUser.password, user.password)
     if (!checkPassword) {
-      throw new HttpException('Password incorrect.', 400);
+      throw new BadRequestException('Password incorrect.');
     }
     const payload = { id: user.id, email: user.email, role: user.role };
     const token = await this.jwtService.signAsync(payload);
@@ -32,9 +33,6 @@ export class AuthService {
       access_token: token,
     };
   }
-
-
-
   
   async register(user: RegisterAuthDto) {
     const { password } = user;

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, HttpCode } from '@nestjs/common';
 import { ParkingsService } from './parkings.service';
 import { CreateParkingDto } from './dto/create-parking.dto';
 import { UpdateParkingDto } from './dto/update-parking.dto';
@@ -8,8 +8,8 @@ export class ParkingsController {
   constructor(private readonly parkingsService: ParkingsService) {}
 
   @Post()
-  create(@Body() createParkingDto: CreateParkingDto) {
-    return this.parkingsService.create(createParkingDto);
+  create(@Body() createParkingDto: CreateParkingDto, idSocio: number) {
+    return this.parkingsService.create(createParkingDto, idSocio);
   }
 
   @Get()
@@ -28,6 +28,7 @@ export class ParkingsController {
   }
 
   @Delete(':id')
+  @HttpCode(204)
   remove(@Param('id') id: string) {
     return this.parkingsService.remove(+id);
   }

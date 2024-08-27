@@ -21,5 +21,5 @@ import { User } from '../../users/entities/user.entity';
     vehicleCapacity: number;
   
     @Column({ name: 'hourly_rate', type: 'decimal', nullable: true })
-    hourlyRate: number;
+    hourlyRate: number; 
   }
