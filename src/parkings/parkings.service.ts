@@ -1,17 +1,17 @@
-import { Injectable } from '@nestjs/common';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { CreateParkingDto } from './dto/create-parking.dto';
 import { UpdateParkingDto } from './dto/update-parking.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Parking } from './entities/parking.entity';
-import { Repository } from 'typeorm';
+import { Between, IsNull, Not, Repository } from 'typeorm';
 import { Role } from 'src/roles/role.enum';
 import { NotFoundException } from 'src/exceptions/not-found.exception';
 import { ConflictException } from 'src/exceptions/conflict.exception';
 import { UserService } from 'src/users/users.service';
 import { GetParkingDto } from './dto/get-parking.dto';
 import { VehiclesService } from 'src/vehicles/vehicles.service';
-import { Vehicle } from 'src/vehicles/entities/vehicle.entity';
 import { VehicleHistory } from 'src/vehicleshistory/entities/vehicleshistory.entity';
+import { endOfDay, endOfMonth, endOfYear, startOfDay, startOfMonth, startOfYear } from 'date-fns';
 
 @Injectable()
 export class ParkingsService {
@@ -19,8 +19,9 @@ export class ParkingsService {
     @InjectRepository(Parking)
     private parkingRepository: Repository<Parking>,
     @InjectRepository(VehicleHistory)
-    private vehicleHistoryRepository: Repository<Vehicle>,
+    private vehicleHistoryRepository: Repository<VehicleHistory>,
     private userService: UserService,
+    @Inject(forwardRef(() => VehiclesService))
     private vehicleService: VehiclesService
   ) {}
 
@@ -113,5 +114,82 @@ export class ParkingsService {
       .getCount();
 
     return count;
+  }
+
+
+  calcularCostoParqueadero(entryTime: Date, exitTime: Date, hourlyRate: number) {
+    if (!exitTime) {
+      throw new ConflictException('El vehículo aún sigue en el parqueadero');
+    }
+
+    if (!entryTime || hourlyRate == null) {
+      throw new Error('La entrada, salida o costo por hora no pueden ser null');
+    }
+
+    const minutes = Math.floor((+exitTime - +entryTime) / 60000);
+    const hours = Math.ceil(minutes / 60);
+    return hours * hourlyRate;
+  }
+
+  async calculateEarningsPeriod(dateStart: Date, dateFinish: Date, idParking: number) {
+    const parking = await this.parkingRepository.findOne({where: {id : idParking}})
+    console.log('parking: ', parking)
+    if(!parking){
+      throw new NotFoundException('Parking not found.')
+    }
+
+    const historiales = await this.vehicleHistoryRepository.find({
+      where: {
+        parking: { id: idParking },
+        entryTime: Between(dateStart, dateFinish),
+        exitTime: Not(IsNull())
+      }
+    });
+  
+    const totalGanancias = historiales.reduce((total, historial) => {
+      console.log(historial);
+      const historialTotal = typeof historial.total === 'number' ? historial.total : parseFloat(historial.total as unknown as string) || 0;
+      return total + historialTotal;
+    }, 0);
+
+    return totalGanancias;
+  }
+
+  async calculateEarningsDay(idParking: number){
+    const parking = await this.parkingRepository.findOne({where: {id: idParking}})
+    if(!parking){
+      throw new NotFoundException('Parking not found.')
+    }
+
+    const now = new Date();
+    const startDay = startOfDay(now);
+    const endDay = endOfDay(now);
+
+    return this.calculateEarningsPeriod(startDay, endDay, parking.id);
+  }
+
+  async calculateEarningsMonth(idParking: number) {
+    const parking = await this.parkingRepository.findOne({where: {id: idParking}})
+    if(!parking){
+      throw new NotFoundException('Parking not found.')
+    }
+
+    const now = new Date();
+    const startMonth = startOfMonth(now);
+    const endMonth = endOfMonth(now);
+
+    return this.calculateEarningsPeriod(startMonth, endMonth, parking.id);
+  }
+
+  async calculateEarningsYear(idParking: number) {
+    const parking = await this.parkingRepository.findOne({where: {id: idParking}})
+    if(!parking){
+      throw new NotFoundException('Parking not found.')
+    }
+    const now = new Date();
+    const startYear = startOfYear(now);
+    const endYear = endOfYear(now);
+
+    return this.calculateEarningsPeriod(startYear, endYear, parking.id);
   }
 }

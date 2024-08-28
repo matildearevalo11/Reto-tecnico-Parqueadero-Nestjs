@@ -2,6 +2,7 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, HttpCode } from '@ne
 import { ParkingsService } from './parkings.service';
 import { CreateParkingDto } from './dto/create-parking.dto';
 import { UpdateParkingDto } from './dto/update-parking.dto';
+import { MessageDto } from 'src/message/dto/message.dto';
 
 @Controller('parkings')
 export class ParkingsController {
@@ -31,5 +32,23 @@ export class ParkingsController {
   @HttpCode(204)
   remove(@Param('id') id: string) {
     return this.parkingsService.remove(+id);
+  }
+
+  @Get('/earnings-for-day/:idParking')
+  async getEarningsDay(@Param('idParking') idParking: number) {
+      const earnings = await this.parkingsService.calculateEarningsDay(idParking);
+      return new MessageDto(`Earnings for day:  ${earnings}`)
+  }
+
+  @Get("/earnings-for-month/:idParking")
+  async getEarningsMonth(@Param('idParking') idParking: number) {
+    const earnings = await this.parkingsService.calculateEarningsMonth(idParking);
+    return new MessageDto(`Earnings for month:  ${earnings}`)
+  }
+
+  @Get("/earnings-for-year/:idParking")
+  async getEarningsYear(@Param('idParking') idParking: number) {
+    const earnings = await this.parkingsService.calculateEarningsYear(idParking);
+    return new MessageDto(`Earnings for year:  ${earnings}`)
   }
 }

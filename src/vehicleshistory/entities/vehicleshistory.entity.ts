@@ -13,8 +13,8 @@ import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn,
     @JoinColumn({ name: 'parking_id', referencedColumnName: 'id' })
     parking: Parking;
   
-    @ManyToOne(() => Vehicle)
-    @JoinColumn({ name: 'plate', referencedColumnName: 'plate' })
+    @ManyToOne(() => Vehicle, { nullable: false, eager: true })
+    @JoinColumn({ name: 'vehicle_plate', referencedColumnName: 'plate' })
     vehicle: Vehicle;
   
     @Column({ name: 'entryTime', type: 'timestamp', nullable: false })
