@@ -5,9 +5,9 @@ import { Role } from 'src/roles/role.enum';
 
 export class RegisterAuthDto extends PartialType(LoginAuthDto) {
 
-    @IsNotEmpty()
-    @IsEmail()
-    email: string;
+  @IsNotEmpty()
+  @IsEmail()
+  email: string;
 
-    role: Role;
+  role: Role;
 }

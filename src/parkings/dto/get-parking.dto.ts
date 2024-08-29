@@ -1,4 +1,3 @@
-
 export class GetParkingDto {
   id: number;
   idSocio: number;

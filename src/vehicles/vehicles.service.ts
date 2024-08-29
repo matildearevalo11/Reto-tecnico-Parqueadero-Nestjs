@@ -1,11 +1,9 @@
-import { forwardRef, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, forwardRef, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateEntryDto } from './dto/create-entry.dto';
-import { UpdateVehicleDto } from './dto/update-vehicle.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Vehicle } from './entities/vehicle.entity';
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 import { VehicleHistory } from 'src/vehicleshistory/entities/vehicleshistory.entity';
-import { ConflictException } from 'src/exceptions/conflict.exception';
 import { Parking } from 'src/parkings/entities/parking.entity';
 import { CreateVehicleshistoryDto } from 'src/vehicleshistory/dto/create-vehicleshistory.dto';
 import { plainToInstance } from 'class-transformer';
@@ -36,24 +34,23 @@ export class VehiclesService {
     return `This action returns a #${id} vehicle`;
   }
 
-  update(id: number, updateVehicleDto: UpdateVehicleDto) {
-    return `This action updates a #${id} vehicle`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} vehicle`;
-  }
-
   async saveEntry(createEntryDto: CreateEntryDto, id: number){
-    const vehiculoOptional = await this.vehicleRepository.findOne({ where: { plate: createEntryDto.plate } });
-    
-    if (vehiculoOptional) {
-      const historialActualOptional = await this.vehicleHistoryRepository.findOne({
-        where: { vehicle: vehiculoOptional, exitTime: null },
-      });
-      if (historialActualOptional) {
-        throw new ConflictException('No se puede registrar ingreso, ya existe una entrada para este vehículo');
-      }
+    const vehiculoOptional = await this.vehicleRepository.findOne({
+      where: { plate: createEntryDto.plate }});
+
+    if (!vehiculoOptional) {
+        throw new NotFoundException('Vehicle not found.');
+    }
+
+    const historialActualOptional = await this.vehicleHistoryRepository.findOne({
+        where: {
+            vehicle: vehiculoOptional,
+            exitTime: IsNull()  
+        }
+    });
+
+    if (historialActualOptional) {
+        throw new ConflictException('No se puede registrar ingreso, ya existe una entrada activa para este vehículo.');
     }
 
     const parking = await this.parkingRepository.findOne({
@@ -106,18 +103,25 @@ export class VehiclesService {
     }
 
     const historial = await this.vehicleHistoryService.findByVehiculoAndSalidaIsNull(vehicle);
-    console.log('flag: ',historial)
        if (historial.exitTime) {
          throw new NotFoundException(`No se encontró un registro de entrada activo para el vehículo con placa ${historial.vehicle.plate}`);
        }
        historial.exitTime = new Date(); 
        const hourlyRate = historial.parking.hourlyRate;
        const total = this.parkingService.calcularCostoParqueadero(historial.entryTime, historial.exitTime, hourlyRate);
-       console.log(total)
        historial.total = total;
 
        await this.vehicleHistoryRepository.save(historial);
        return new MessageDto('Exit registered.')
+}
+
+async findPlateCoincidence(plateCoincidence: string): Promise<any> {
+  const results = await this.vehicleRepository.createQueryBuilder('v')
+    .select('v.plate', 'plate')
+    .where('v.plate LIKE :plate', { plate: `%${plateCoincidence}%` })
+    .getRawMany();
+  console.log(results)
+  return results;
 }
 
 }

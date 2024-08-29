@@ -1,17 +1,18 @@
-import { forwardRef, Inject, Injectable } from '@nestjs/common';
+import { ConflictException, forwardRef, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateParkingDto } from './dto/create-parking.dto';
 import { UpdateParkingDto } from './dto/update-parking.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Parking } from './entities/parking.entity';
 import { Between, IsNull, Not, Repository } from 'typeorm';
 import { Role } from 'src/roles/role.enum';
-import { NotFoundException } from 'src/exceptions/not-found.exception';
-import { ConflictException } from 'src/exceptions/conflict.exception';
 import { UserService } from 'src/users/users.service';
 import { GetParkingDto } from './dto/get-parking.dto';
 import { VehiclesService } from 'src/vehicles/vehicles.service';
 import { VehicleHistory } from 'src/vehicleshistory/entities/vehicleshistory.entity';
 import { endOfDay, endOfMonth, endOfYear, startOfDay, startOfMonth, startOfYear } from 'date-fns';
+import { VehicleshistoryService } from 'src/vehicleshistory/vehicleshistory.service';
+import { ParkedVehiclesDto } from './dto/parked-vehicles.dto';
+import { plainToInstance } from 'class-transformer';
 
 @Injectable()
 export class ParkingsService {
@@ -20,6 +21,7 @@ export class ParkingsService {
     private parkingRepository: Repository<Parking>,
     @InjectRepository(VehicleHistory)
     private vehicleHistoryRepository: Repository<VehicleHistory>,
+    private vehicleHistoryService: VehicleshistoryService,
     private userService: UserService,
     @Inject(forwardRef(() => VehiclesService))
     private vehicleService: VehiclesService
@@ -58,7 +60,7 @@ export class ParkingsService {
         throw new NotFoundException(`Id parking ${id} not found`);
     }
     return this.mapParkingToDTO(parking);
-}
+  }
 
   async update(id: number, updateParkingDto: UpdateParkingDto) {
     const parking = await this.parkingRepository.findOne({where: { id }, relations: ['user'],})
@@ -95,7 +97,6 @@ export class ParkingsService {
   }
 
   private mapParkingToDTO(parking: Parking): GetParkingDto {
-    console.log(parking)
     return {
       id: parking.id,
       idSocio: parking.user.id,
@@ -116,12 +117,10 @@ export class ParkingsService {
     return count;
   }
 
-
   calcularCostoParqueadero(entryTime: Date, exitTime: Date, hourlyRate: number) {
     if (!exitTime) {
       throw new ConflictException('El vehículo aún sigue en el parqueadero');
     }
-
     if (!entryTime || hourlyRate == null) {
       throw new Error('La entrada, salida o costo por hora no pueden ser null');
     }
@@ -133,26 +132,22 @@ export class ParkingsService {
 
   async calculateEarningsPeriod(dateStart: Date, dateFinish: Date, idParking: number) {
     const parking = await this.parkingRepository.findOne({where: {id : idParking}})
-    console.log('parking: ', parking)
     if(!parking){
       throw new NotFoundException('Parking not found.')
     }
-
-    const historiales = await this.vehicleHistoryRepository.find({
+    const historicals = await this.vehicleHistoryRepository.find({
       where: {
         parking: { id: idParking },
         entryTime: Between(dateStart, dateFinish),
         exitTime: Not(IsNull())
       }
-    });
-  
-    const totalGanancias = historiales.reduce((total, historial) => {
-      console.log(historial);
-      const historialTotal = typeof historial.total === 'number' ? historial.total : parseFloat(historial.total as unknown as string) || 0;
-      return total + historialTotal;
+    });  
+    const totalEarnings = historicals.reduce((total, history) => {
+      const earnings = typeof history.total === 'number' ? history.total : parseFloat(history.total as unknown as string) || 0;
+      return total + earnings;
     }, 0);
 
-    return totalGanancias;
+    return totalEarnings;
   }
 
   async calculateEarningsDay(idParking: number){
@@ -160,7 +155,6 @@ export class ParkingsService {
     if(!parking){
       throw new NotFoundException('Parking not found.')
     }
-
     const now = new Date();
     const startDay = startOfDay(now);
     const endDay = endOfDay(now);
@@ -173,7 +167,6 @@ export class ParkingsService {
     if(!parking){
       throw new NotFoundException('Parking not found.')
     }
-
     const now = new Date();
     const startMonth = startOfMonth(now);
     const endMonth = endOfMonth(now);
@@ -191,5 +184,35 @@ export class ParkingsService {
     const endYear = endOfYear(now);
 
     return this.calculateEarningsPeriod(startYear, endYear, parking.id);
+  }
+
+  async vehiclesMostRegistered(){
+    return await this.vehicleHistoryService.findVehiclesMostRegistered()
+  }
+
+  async vehiclesMostRegisteredByParking(idParking: number){
+    return await this.vehicleHistoryService.findVehiclesMostRegisteredByParking(idParking)
+  }
+
+  async firstTimeEntriesByParking(idParking: number){
+    const vehicles= await this.vehicleHistoryService.findVehiclesExitIsNull(idParking)
+
+    if(!vehicles){
+      throw new NotFoundException('There are no parked vehicles.')
+    }    
+    const firstTimeEntries = await Promise.all(
+      vehicles.map(async (v) => {
+        const count = await this.vehicleHistoryService.countEntriesByPlateAndParking(v.vehicle.plate, idParking);
+        return count === 1 ? v : null;
+      })
+    );
+    const vehiclesFirstTime = firstTimeEntries.filter(v => v !== null);
+    const mappedVehicles = plainToInstance(ParkedVehiclesDto, vehiclesFirstTime);
+    console.log(mappedVehicles)
+    return mappedVehicles
+    .map(vehicle => ({
+      plate: vehicle.plate,
+      entryTime: vehicle.entryTime,
+    }));
   }
 }

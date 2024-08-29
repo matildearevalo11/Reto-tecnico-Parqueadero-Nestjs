@@ -1,11 +1,10 @@
-import { HttpException, Injectable, UnauthorizedException } from "@nestjs/common";
+import { BadGatewayException, HttpException, Injectable, UnauthorizedException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { UserService } from "src/users/users.service";
 import { LoginAuthDto } from "./dto/login-auth.dto";
 import { RegisterAuthDto } from "./dto/register-auth.dto";
 import { hash, compare } from "bcrypt";
 import { TokenService } from "src/token/token.service";
-import { BadRequestException } from "src/exceptions/bad-request.exception";
 
 @Injectable()
 export class AuthService {
@@ -20,7 +19,7 @@ export class AuthService {
     const user = await this.usersService.findByEmail(loginUser.email);
     const checkPassword = await compare(loginUser.password, user.password)
     if (!checkPassword) {
-      throw new BadRequestException('Password incorrect.');
+      throw new BadGatewayException('Password incorrect.');
     }
     const payload = { id: user.id, email: user.email, role: user.role };
     const token = await this.jwtService.signAsync(payload);

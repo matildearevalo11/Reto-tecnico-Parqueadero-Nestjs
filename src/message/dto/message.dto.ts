@@ -1,5 +1,5 @@
 export class MessageDto {
-    email: string;
+  email: string;
 
-    constructor(private message: string){}
+  constructor(private message: string){}
 }

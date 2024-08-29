@@ -1,10 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
 import { Repository } from 'typeorm';
 import { Role } from '../roles/role.enum';
 import { RegisterAuthDto } from 'src/auth/dto/register-auth.dto';
-import { ConflictException } from 'src/exceptions/conflict.exception';
 
 @Injectable()
 export class UserService {

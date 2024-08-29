@@ -18,6 +18,24 @@ export class ParkingsController {
     return this.parkingsService.findAll();
   }
 
+  @Get('/10-most-registered')
+  async getVehiclesMostRegistered(){
+    const mostRegistered = await this.parkingsService.vehiclesMostRegistered();
+    return mostRegistered;
+  } 
+
+  @Get('/10-most-registered/:id')
+  async getVehiclesMostRegisteredByParking(@Param('id') id: number){
+    const mostRegistered = await this.parkingsService.vehiclesMostRegisteredByParking(+id);
+    return mostRegistered;
+  } 
+
+  @Get('/first-time-entries/:id')
+  async firstTimeEntriesByParking(@Param('id') id: number){
+    const firstTimeEntries = await this.parkingsService.firstTimeEntriesByParking(+id);
+    return firstTimeEntries;
+  } 
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.parkingsService.findOne(+id);
@@ -50,5 +68,5 @@ export class ParkingsController {
   async getEarningsYear(@Param('idParking') idParking: number) {
     const earnings = await this.parkingsService.calculateEarningsYear(idParking);
     return new MessageDto(`Earnings for year:  ${earnings}`)
-  }
+  } 
 }
