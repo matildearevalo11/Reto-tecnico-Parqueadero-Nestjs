@@ -11,7 +11,6 @@ import { AuthGuard } from 'src/auth/auth.guard';
 export class VehiclesController {
   constructor(private readonly vehiclesService: VehiclesService) {}
 
-  
   @Post('save-entry')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.SOCIO)
@@ -30,17 +29,23 @@ export class VehiclesController {
      }
 
   @Get('plate-coincidence/:plateCoincidence')
+  @Roles(Role.ADMIN, Role.SOCIO)
   findPlateCoincidence(@Param('plateCoincidence') plateCoincidence: string) {
     return this.vehiclesService.findPlateCoincidence(plateCoincidence);
   }
 
-  @Get()
-  findAll() {
-    return this.vehiclesService.findAll();
+  @Get('/detail/:id')
+  @Roles(Role.ADMIN)
+  getDetail(@Param('id') idParking: number) {
+    return this.vehiclesService.getDetail(idParking);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.vehiclesService.findOne(+id);
+  @Roles(Role.SOCIO)
+  findAll(@Param('id') idParking: number) {
+    return this.vehiclesService.findAll(idParking);
   }
+
+ 
+
 }

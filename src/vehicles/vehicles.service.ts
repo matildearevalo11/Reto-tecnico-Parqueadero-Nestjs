@@ -10,6 +10,8 @@ import { plainToInstance } from 'class-transformer';
 import { VehicleshistoryService } from 'src/vehicleshistory/vehicleshistory.service';
 import { ParkingsService } from 'src/parkings/parkings.service';
 import { MessageDto } from 'src/message/dto/message.dto';
+import { ParkedVehiclesDto } from 'src/parkings/dto/parked-vehicles.dto';
+import { GetDetailDto } from './dto/get-detail-vehicle.dto';
 
 @Injectable()
 export class VehiclesService {
@@ -25,13 +27,29 @@ export class VehiclesService {
     private parkingService: ParkingsService,
   ) {}
 
-
-  findAll() {
-    return `This action returns all vehicles`;
+  async findAll(idParking: number) {
+    const vehicles = await this.vehicleHistoryService.findVehiclesByParking(idParking);
+    const mappedVehicles = plainToInstance(ParkedVehiclesDto, vehicles);
+  return mappedVehicles
+  .map(vehicle => ({
+    plate: vehicle.plate,
+    entryTime: vehicle.entryTime,
+  }));  
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} vehicle`;
+  async getDetail(idParking: number) {
+    const vehicles = await this.vehicleHistoryService.findVehiclesByParking(idParking);
+    const mappedVehicles = plainToInstance(GetDetailDto, vehicles);
+    console.log(mappedVehicles)
+    return mappedVehicles
+    .map(vehicle => ({
+      plate: vehicle.plate,
+      brand: vehicle.brand,
+      model: vehicle.model,
+      color: vehicle.color,
+      entryTime: vehicle.entryTime,
+      idParking: vehicle.idParking
+    }));  
   }
 
   async saveEntry(createEntryDto: CreateEntryDto, id: number){
@@ -50,7 +68,7 @@ export class VehiclesService {
     });
 
     if (historialActualOptional) {
-        throw new ConflictException('No se puede registrar ingreso, ya existe una entrada activa para este vehículo.');
+        throw new ConflictException('Unable to register entry, there is already an active entry for this vehicle.');
     }
 
     const parking = await this.parkingRepository.findOne({
@@ -63,7 +81,7 @@ export class VehiclesService {
     }
 
     if (parking.user.id !== id) {
-      throw new ConflictException('Este socio no puede añadir entradas a parqueaderos que no tiene a cargo.');
+      throw new ConflictException('This partner cannot add entrances to parking lots that he is not in charge of.');
     }
 
     const totalVehiculos = await this.vehicleHistoryRepository.count({
@@ -71,7 +89,7 @@ export class VehiclesService {
     });
 
     if (totalVehiculos >= parking.vehicleCapacity) {
-      throw new ConflictException('El parqueadero está lleno. No se puede registrar más vehículos.');
+      throw new ConflictException('Parking is full. No more vehicles can be registered.');
     }
 
     let vehicle = vehiculoOptional || new Vehicle();
@@ -104,7 +122,7 @@ export class VehiclesService {
 
     const historial = await this.vehicleHistoryService.findByVehiculoAndSalidaIsNull(vehicle);
        if (historial.exitTime) {
-         throw new NotFoundException(`No se encontró un registro de entrada activo para el vehículo con placa ${historial.vehicle.plate}`);
+         throw new NotFoundException(`No active entry record was found for the vehicle with plate ${historial.vehicle.plate}`);
        }
        historial.exitTime = new Date(); 
        const hourlyRate = historial.parking.hourlyRate;

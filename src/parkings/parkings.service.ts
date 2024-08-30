@@ -31,7 +31,7 @@ export class ParkingsService {
     const socio = await this.userService.findOne(idSocio);
 
     if (!socio) {
-      throw new NotFoundException(`Socio con el id ${idSocio} no encontrado`);
+      throw new NotFoundException(`Partner identifier with ${idSocio} not found`);
     }
 
     if (socio.role !== Role.ADMIN) {
@@ -45,7 +45,7 @@ export class ParkingsService {
       await this.parkingRepository.save(parking); 
       return { id: parking.id }; 
     } else {
-      throw new ConflictException('Un admin no puede tener un parqueadero asociado.');
+      throw new ConflictException('Admin cannot have an associated parking lot.');
     }
   }
 
@@ -74,7 +74,7 @@ export class ParkingsService {
     if (updateParkingDto.vehicleCapacity >= totalVehicles) {
       parking.vehicleCapacity = updateParkingDto.vehicleCapacity;
     } else {
-      throw new ConflictException('La capacidad vehicular es menor a la cantidad actual de vehículos parqueados.');
+      throw new ConflictException('Vehicle capacity is less than the current number of parked vehicles.');
     }
     parking.hourlyRate = updateParkingDto.hourlyRate;
 
@@ -91,7 +91,7 @@ export class ParkingsService {
     const vehicleCount = await this.countVehiclesByParking(id);
 
     if(vehicleCount > 0){
-      throw new ConflictException("No puede eliminar un parqueadero con vehiculos parqueados")
+      throw new ConflictException("You cannot delete a parking lot with parked vehicles.")
     }
     this.parkingRepository.delete(id)
   }
@@ -119,10 +119,10 @@ export class ParkingsService {
 
   calcularCostoParqueadero(entryTime: Date, exitTime: Date, hourlyRate: number) {
     if (!exitTime) {
-      throw new ConflictException('El vehículo aún sigue en el parqueadero');
+      throw new ConflictException('The vehicle is still in the parking lot.');
     }
     if (!entryTime || hourlyRate == null) {
-      throw new Error('La entrada, salida o costo por hora no pueden ser null');
+      throw new Error('Entry, exit or hourly rate cannot be null');
     }
 
     const minutes = Math.floor((+exitTime - +entryTime) / 60000);
@@ -195,7 +195,7 @@ export class ParkingsService {
   }
 
   async firstTimeEntriesByParking(idParking: number){
-    const vehicles= await this.vehicleHistoryService.findVehiclesExitIsNull(idParking)
+    const vehicles= await this.vehicleHistoryService.findVehiclesExitIsNull()
 
     if(!vehicles){
       throw new NotFoundException('There are no parked vehicles.')
@@ -208,7 +208,6 @@ export class ParkingsService {
     );
     const vehiclesFirstTime = firstTimeEntries.filter(v => v !== null);
     const mappedVehicles = plainToInstance(ParkedVehiclesDto, vehiclesFirstTime);
-    console.log(mappedVehicles)
     return mappedVehicles
     .map(vehicle => ({
       plate: vehicle.plate,

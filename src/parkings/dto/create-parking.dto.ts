@@ -1,4 +1,4 @@
-import { IsDecimal, IsInt, IsNotEmpty, Min } from "class-validator";
+import { IsInt, IsNotEmpty, Min } from "class-validator";
 
 export class CreateParkingDto {
   @IsInt({ message: 'El id del socio es obligatorio.' })

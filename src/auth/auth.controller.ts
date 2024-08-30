@@ -31,6 +31,7 @@ export class AuthController {
 
   @Post('logout')
   @UseGuards(AuthGuard)
+  @Roles(Role.ADMIN, Role.SOCIO)
   async logoutUser(@Body('token') token: string) {
     await this.tokenService.removeToken(token);
     return new MessageDto('Logout successful');
